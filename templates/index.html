@@ -81,6 +81,14 @@
             box-shadow: 0 0 0 3px rgba(77, 160, 73, 0.5);
         }
 
+        .error {
+            color: rgba(252, 57, 57, 0.8);
+        }
+
+        .success {
+            color: rgba(0, 154, 0, 0.91);
+        }
+
         .light-theme {
             background-color: var(--light-background);
             color: var(--light-text);
@@ -258,15 +266,126 @@
         if (currentTheme === 'light') {
             body.classList.remove('light-theme');
             body.classList.add('dark-theme');
-            themeSwitch.textContent = 'Dark theme';
+            themeSwitch.textContent = 'Light theme';
             localStorage.setItem('theme', 'dark');
         } else {
             body.classList.remove('dark-theme');
             body.classList.add('light-theme');
-            themeSwitch.textContent = 'Light theme';
+            themeSwitch.textContent = 'Dark theme';
             localStorage.setItem('theme', 'light');
         }
     }
+
+    function generateForm() {
+        const effectSelect = document.getElementById('effect');
+        const effectName = effectSelect.value;
+        const paramsContainer = document.getElementById('paramsContainer');
+        paramsContainer.innerHTML = '';
+
+        const effectData = effects.find(effect => effect.name === effectName);
+
+        if (effectData && effectData.params) {
+            for (const paramName in effectData.params) {
+                if (paramName === "r" || paramName === "g" || paramName === "b") {
+                    continue;
+                }
+                const paramInfo = effectData.params[paramName];
+                const label = document.createElement('label');
+
+                label.textContent = paramInfo.desc ? `${paramInfo.desc}:` : `${paramName}:`;
+
+                const input = document.createElement('input');
+                input.type = 'range';
+                input.id = paramName;
+                input.min = paramInfo.min;
+                input.max = paramInfo.max;
+                input.step = (paramInfo.max - paramInfo.min) / 100;
+
+
+                if (paramName === 'speed') {
+                    input.max = paramInfo.max;
+                    input.min = paramInfo.min;
+                    input.value = paramInfo.max - (paramInfo.default - paramInfo.min);
+
+                    if (paramInfo.max < paramInfo.min) {
+                        console.error("Incorrect min/max values for the speed parameter!");
+                    }
+                } else {
+                    input.value = paramInfo.default;
+                }
+
+                input.addEventListener('input', function () {
+                    const valueSpan = document.getElementById(`${paramName}-value`);
+                    if (valueSpan) {
+                        valueSpan.textContent = paramName === 'speed' ? this.max - (this.value - this.min) : this.value;
+                    }
+                });
+
+                const valueSpan = document.createElement('span');
+                valueSpan.id = `${paramName}-value`;
+                valueSpan.textContent = paramName === 'speed' ? input.max - (input.value - input.min) : input.value;
+                valueSpan.style.marginLeft = '5px';
+
+
+                const container = document.createElement('div');
+                container.appendChild(label);
+                container.appendChild(input);
+                container.appendChild(valueSpan);
+                paramsContainer.appendChild(container);
+                paramsContainer.appendChild(document.createElement('br'));
+            }
+        } else {
+            paramsContainer.innerHTML = '<p>There are no parameters for this effect.</p>';
+        }
+    }
+    function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : null;
+        }
+
+    function updateEffectDescription() {
+        const effectSelect = document.getElementById('effect');
+        const selectedEffect = effects.find(effect => effect.name === effectSelect.value);
+        const effectDescription = document.getElementById('effectDescription');
+        effectDescription.textContent = selectedEffect ? selectedEffect.desc : '';
+    }
+
+
+    function updateColorPicker() {
+        const rawColorInput = document.getElementById('rawColor');
+        const colorPicker = document.getElementById('colorPicker');
+        const rawColor = rawColorInput.value.trim();
+
+        let r, g, b;
+        if (rawColor) {
+            if (rawColor.startsWith('#')) {
+                const hexColor = rawColor.substring(1);
+                if (hexColor.length === 3) {
+                    r = parseInt(hexColor[0] + hexColor[0], 16);
+                    g = parseInt(hexColor[1] + hexColor[1], 16);
+                    b = parseInt(hexColor[2] + hexColor[2], 16);
+                } else if (hexColor.length === 6) {
+                    r = parseInt(hexColor.substring(0, 2), 16);
+                    g = parseInt(hexColor.substring(2, 4), 16);
+                    b = parseInt(hexColor.substring(4, 6), 16);
+                } else {
+                    rawColorInput.setCustomValidity("Invalid HEX color format");
+                    return;
+                }
+            } else {
+                [r, g, b] = rawColor.split(',').map(Number);
+                if (isNaN(r) || isNaN(g) || isNaN(b) || r > 255 || g > 255 || b > 255 || r < 0 || g < 0 || b < 0) {
+                    rawColorInput.setCustomValidity("Incorrect RAW RGB color format");
+                    return;
+                }
+            }
+            rawColorInput.setCustomValidity("");
+            colorPicker.value = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+        } else {
+            colorPicker.value = "#ff0000";
+        }
+    }
+
 
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
