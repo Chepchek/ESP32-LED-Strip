@@ -43,7 +43,8 @@ Exception handling (try...except) prevents program crashes due to errors.
 Let’s create a simple blinking effect:
 
 ```Python
-import uasyncio
+import uasyncio as asyncio
+
 
 class BlinkEffect:
     def __init__(self, strip, params):
@@ -60,7 +61,7 @@ class BlinkEffect:
                 color = (self.r, self.g, self.b) if self.on else (0, 0, 0)
                 self.strip.fill(color)
                 await self.strip.write()
-                await uasyncio.sleep(self.speed)
+                await asyncio.sleep(self.speed)
                 self.on = not self.on
         except Exception as e:
             print(f"Error in Blink effect: {e}")
@@ -72,12 +73,14 @@ class BlinkEffect:
 
     @staticmethod
     def get_params_info():
-        return "Simple blinking effect", {
-            "r": {"default": 255, "min": 0, "max": 255, "desc": "Red component"},
-            "g": {"default": 255, "min": 0, "max": 255, "desc": "Green component"},
-            "b": {"default": 255, "min": 0, "max": 255, "desc": "Blue component"},
-            "speed": {"default": 0.5, "min": 0.1, "max": 2.0, "desc": "Blinking speed"},
-        }
+        return ("Simple blinking effect", # Short description of the effect
+                # Parameter of the effect
+                {
+                    "r": {"default": 255, "min": 0, "max": 255, "desc": "Red component"},
+                    "g": {"default": 255, "min": 0, "max": 255, "desc": "Green component"},
+                    "b": {"default": 255, "min": 0, "max": 255, "desc": "Blue component"},
+                    "speed": {"default": 0.5, "min": 0.1, "max": 2.0, "desc": "Blinking speed"},
+                })
 ```
 
 
@@ -85,24 +88,14 @@ class BlinkEffect:
 ### Add this class to the EffectsManager class for dynamic loading on the site
 ```Python
 class EffectManager:
-    """
-    Класс для управления различными эффектами для светодиодной ленты.
-    """
 
     def __init__(self, strip, stop_event):
-        """
-        Инициализация EffectManager.
-
-        Args:
-            strip: Объект светодиодной ленты.
-            stop_event: Событие для остановки всех эффектов.
-        """
         self.strip = strip
         self.effects = {
             "fire_v2": FireEffectV2,
             "twinkle": TwinkleEffect,
             "strobe": StrobeEffect,
-                                     <-- add here your effect class like this "EffectName": EffectClass,
+                        <-- add here your effect class like this "EffectName": EffectClass
         }
 ```
 ### Download it to the board and reboot... DONE!
