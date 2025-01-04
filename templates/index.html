@@ -3,7 +3,7 @@
 <head>
     <title>LED Control</title>
     <style>
-        /* Общие стили */
+
         :root {
             --light-background: #f4f4f4;
             --light-text: #333;
@@ -21,10 +21,9 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            background-color: #f4f4f4;
-            color: #333; /* Темно-серый текст */
-            transition: color, background-color 0.3s ease; /* Плавный переход текста */
-
+            background-color: var(--light-background);
+            color: var(--light-text);
+            transition: color, background-color 0.3s ease;
         }
 
         h1 {
@@ -65,62 +64,21 @@
             padding: 10px 20px;
             background-color: #4CAF50;
             color: white;
-            border: none;
+            border: 2px solid #4CAF50;
             border-radius: 4px;
             cursor: pointer;
             margin-bottom: 10px;
-        }
-
-        /* Стили для статуса запроса */
-        #status {
-            margin-top: 15px;
-            text-align: center;
-            padding: 10px; /* Добавлено padding */
-            border-radius: 5px; /* Добавлено скругление углов */
-        }
-
-        #status.success { /* Класс для успешного запроса */
-            background-color: #d4edda; /* Светло-зеленый */
-            border-color: #c3e6cb; /* Светло-зеленый */
-            color: #155724; /* Темно-зеленый */
-        }
-
-        #status.error { /* Класс для неудачного запроса */
-            background-color: #f8d7da; /* Светло-розовый */
-            border-color: #f5c6cb; /* Светло-розовый */
-            color: #721c24; /* Темно-красный */
-        }
-
-        #effectDescription {
-            margin-top: 10px;
-            font-style: italic;
-        }
-
-        #colorPicker {
-            width: 80px; /* Увеличиваем ширину */
-            height: 30px; /* Увеличиваем высоту */
-        }
-
-        /* Стили для кнопок */
-        button {
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: white;
-            border: 2px solid #4CAF50; /* Добавлена граница */
-            border-radius: 4px;
-            cursor: pointer;
-            margin-bottom: 10px;
-            transition: background-color 0.3s ease, border-color 0.3s ease; /* Плавный переход */
+            transition: background-color 0.3s ease, border-color 0.3s ease;
         }
 
         button:hover {
-            background-color: #45a049; /* Более темный зеленый при наведении */
-            border-color: #45a049; /* Более темный зеленый при наведении */
+            background-color: #45a049;
+            border-color: #45a049;
         }
 
         button:focus {
-            outline: none; /* Удаляем стандартный outline */
-            box-shadow: 0 0 0 3px rgba(77, 160, 73, 0.5); /* Добавляем тень при фокусе */
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(77, 160, 73, 0.5);
         }
 
         .light-theme {
@@ -152,17 +110,16 @@
         }
 
         .dark-theme label,
-        .dark-theme form { /* Добавлено для формы */
+        .dark-theme form {
             background-color: var(--input-background);
             color: var(--input-text);
             border-color: var(--input-border);
         }
 
         .dark-theme #paramsContainer label {
-            color: white; /* Цвет текста в темной теме */
+            color: white;
         }
 
-        /* Адаптивность */
         @media (max-width: 350px) {
             form {
                 max-width: 95%;
@@ -184,34 +141,34 @@
     </style>
 </head>
 <body class="light-theme">
-<h1>Управление светодиодами</h1>
-<div style="margin-left: 20px;">  <!-- Контейнер для отступа -->
-    <button id="theme-switch" onclick="toggleTheme()">Светлая тема</button>
+<h1>LED control</h1>
+<div style="margin-left: 20px;">
+    <button id="theme-switch" onclick="toggleTheme()">Light theme</button>
 </div>
 <form id="ledForm">
-    <label for="effect">Эффект:</label>
+    <label for="effect">Effects:</label>
     <select id="effect" onchange="updateEffectDescription()"></select><br>
     <p id="effectDescription"></p>
     <div id="paramsContainer"></div>
     <br>
 
-    <label for="colorPicker">Цвет:</label>
+    <label for="colorPicker">Color:</label>
     <input type="color" id="colorPicker" value="#ff0000">
     <label for="rawColor"></label>
     <input type="text" id="rawColor"
            placeholder="RAW RGB (255,0,0) или HEX (#FF0000)"
            oninput="updateColorPicker()"> <br>
 
-    <button type="button" onclick="startEffect()">Запустить</button>
-    <button type="button" onclick="stopAllEffects()">Выключить ленту</button>
+    <button type="button" onclick="startEffect()">Start</button>
+    <button type="button" onclick="stopAllEffects()">Turn off LED strip</button>
     <br>
 
     <p id="status"></p>
 </form>
 
 <script>
-    let effects = [];
-
+    'use strict';
+    const effects = [];
     async function loadEffects() {
         try {
             const response = await fetch('/effects');
@@ -219,109 +176,24 @@
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
-            effects = data.effects;
+            effects.push(...data.effects);
 
             const select = document.getElementById('effect');
-            select.innerHTML = ''; // Очищаем select перед добавлением новых элементов
-
-            effects.forEach(effectData => {
+            effects.forEach(effect => {
                 const option = document.createElement('option');
-                option.value = effectData.name;
-                option.text = effectData.name + (effectData.desc ? ` (${effectData.desc})` : '');
+                option.value = effect.name;
+                option.textContent = effect.name;
                 select.appendChild(option);
             });
 
-
-            select.addEventListener('change', generateForm);
-            generateForm(); // Вызываем generateForm после загрузки эффектов, чтобы показать параметры первого эффекта
-
-            // Обработка ошибок при загрузке параметров эффектов
-            effects.forEach(effect => {
-                if (!effect.params) {
-                    console.warn(`Эффект "${effect.name}" не имеет параметров.`);
-                } else {
-                    for (const paramName in effect.params) {
-                        if (!effect.params[paramName].hasOwnProperty('default') ||
-                            !effect.params[paramName].hasOwnProperty('min') ||
-                            !effect.params[paramName].hasOwnProperty('max') ||
-                            !effect.params[paramName].hasOwnProperty('desc')) {
-                            console.error(`Параметр "${paramName}" эффекта "${effect.name}" имеет некорректный формат.`);
-                        }
-                    }
-                }
-            });
+            updateEffectDescription();
         } catch (error) {
-            console.error('Ошибка при загрузке эффектов:', error);
+            console.error('Error loading effects:', error);
             const statusElement = document.getElementById('status');
-            statusElement.textContent = `Ошибка загрузки эффектов: ${error.message}`;
+            statusElement.textContent = `Error loading effects: ${error.message}`;
             statusElement.className = 'error';
         }
     }
-
-    function generateForm() {
-        const effectSelect = document.getElementById('effect');
-        const effectName = effectSelect.value;
-        const paramsContainer = document.getElementById('paramsContainer');
-        paramsContainer.innerHTML = ''; // Очищаем контейнер параметров
-
-        const effectData = effects.find(effect => effect.name === effectName);
-
-        if (effectData && effectData.params) {
-            for (const paramName in effectData.params) {
-                if (paramName === "r" || paramName === "g" || paramName === "b") {
-                    continue;
-                }
-                const paramInfo = effectData.params[paramName];
-                const label = document.createElement('label');
-
-                // Используем описание параметра вместо имени, если оно есть
-                label.textContent = paramInfo.desc ? `${paramInfo.desc}:` : `${paramName}:`;
-
-                const input = document.createElement('input');
-                input.type = 'range';
-                input.id = paramName;
-                input.min = paramInfo.min;
-                input.max = paramInfo.max;
-                input.step = (paramInfo.max - paramInfo.min) / 100; // Шаг 1/100 диапазона
-
-                // Инвертируем диапазон для параметра speed
-                if (paramName === 'speed') {
-                    input.max = paramInfo.max;
-                    input.min = paramInfo.min;
-                    input.value = paramInfo.max - (paramInfo.default - paramInfo.min);
-                    //Добавлена проверка на корректность значений min/max для speed
-                    if (paramInfo.max < paramInfo.min) {
-                        console.error("Некорректные значения min/max для параметра speed!");
-                    }
-                } else {
-                    input.value = paramInfo.default;
-                }
-
-                input.addEventListener('input', function () {
-                    const valueSpan = document.getElementById(`${paramName}-value`);
-                    if (valueSpan) {
-                        valueSpan.textContent = paramName === 'speed' ? this.max - (this.value - this.min) : this.value;
-                    }
-                });
-
-                const valueSpan = document.createElement('span');
-                valueSpan.id = `${paramName}-value`;
-                valueSpan.textContent = paramName === 'speed' ? input.max - (input.value - input.min) : input.value; //Начальное отображение
-                valueSpan.style.marginLeft = '5px'; // Отступ для значения
-
-
-                const container = document.createElement('div'); // Контейнер для label, input, value
-                container.appendChild(label);
-                container.appendChild(input);
-                container.appendChild(valueSpan);
-                paramsContainer.appendChild(container);
-                paramsContainer.appendChild(document.createElement('br'));
-            }
-        } else {
-            paramsContainer.innerHTML = '<p>Нет параметров для этого эффекта</p>';
-        }
-    }
-
 
     async function startEffect() {
         const effect = document.getElementById('effect').value;
@@ -336,7 +208,7 @@
             params[input.id] = value;
         });
         const color = document.getElementById('colorPicker').value;
-        const [r, g, b] = hexToRgb(color); // Преобразует HEX в RGB
+        const [r, g, b] = hexToRgb(color);
         params.r = r;
         params.g = g;
         params.b = b;
@@ -356,52 +228,13 @@
             }
             const data = await response.json();
             document.getElementById('status').textContent = data.status || 'OK';
-            document.getElementById('status').className = response.ok ? 'success' : 'error'; // Добавлено
+            document.getElementById('status').className = response.ok ? 'success' : 'error';
         } catch (error) {
-            console.error('Ошибка:', error);
-            document.getElementById('status').textContent = `Ошибка: ${error.message}`;
+            console.error('Error:', error);
+            document.getElementById('status').textContent = `Error: ${error.message}`;
         }
     }
 
-    function hexToRgb(hex) {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : null;
-    }
-
-    function updateColorPicker() {
-        const rawColorInput = document.getElementById('rawColor');
-        const colorPicker = document.getElementById('colorPicker');
-        const rawColor = rawColorInput.value.trim();
-
-        let r, g, b;
-        if (rawColor) {
-            if (rawColor.startsWith('#')) {
-                const hexColor = rawColor.substring(1);
-                if (hexColor.length === 3) {
-                    r = parseInt(hexColor[0] + hexColor[0], 16);
-                    g = parseInt(hexColor[1] + hexColor[1], 16);
-                    b = parseInt(hexColor[2] + hexColor[2], 16);
-                } else if (hexColor.length === 6) {
-                    r = parseInt(hexColor.substring(0, 2), 16);
-                    g = parseInt(hexColor.substring(2, 4), 16);
-                    b = parseInt(hexColor.substring(4, 6), 16);
-                } else {
-                    rawColorInput.setCustomValidity("Неверный формат HEX цвета");
-                    return;
-                }
-            } else {
-                [r, g, b] = rawColor.split(',').map(Number);
-                if (isNaN(r) || isNaN(g) || isNaN(b) || r > 255 || g > 255 || b > 255 || r < 0 || g < 0 || b < 0) {
-                    rawColorInput.setCustomValidity("Неверный формат RAW RGB цвета");
-                    return;
-                }
-            }
-            rawColorInput.setCustomValidity("");
-            colorPicker.value = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
-        } else {
-            colorPicker.value = "#ff0000";
-        }
-    }
 
     async function stopAllEffects() {
         try {
@@ -411,33 +244,26 @@
             }
             const data = await response.json();
             document.getElementById('status').textContent = data.status || 'OK';
-            document.getElementById('status').className = response.ok ? 'success' : 'error'; // Добавлено
+            document.getElementById('status').className = response.ok ? 'success' : 'error';
         } catch (error) {
-            console.error('Ошибка:', error);
-            document.getElementById('status').textContent = `Ошибка: ${error.message}`;
+            console.error('Error:', error);
+            document.getElementById('status').textContent = `Error: ${error.message}`;
         }
     }
 
-    function updateEffectDescription() {
-        const effectSelect = document.getElementById('effect');
-        const selectedEffect = effects.find(effect => effect.name === effectSelect.value);
-        const effectDescription = document.getElementById('effectDescription');
-        effectDescription.textContent = selectedEffect ? selectedEffect.desc : '';
-    }
-
-    function toggleTheme() {
+    async function toggleTheme() {
         const body = document.body;
         const themeSwitch = document.getElementById('theme-switch');
         const currentTheme = body.classList.contains('dark-theme') ? 'dark' : 'light';
         if (currentTheme === 'light') {
             body.classList.remove('light-theme');
             body.classList.add('dark-theme');
-            themeSwitch.textContent = 'Темная тема'; // Изменено
+            themeSwitch.textContent = 'Dark theme';
             localStorage.setItem('theme', 'dark');
         } else {
             body.classList.remove('dark-theme');
             body.classList.add('light-theme');
-            themeSwitch.textContent = 'Светлая тема'; // Изменено
+            themeSwitch.textContent = 'Light theme';
             localStorage.setItem('theme', 'light');
         }
     }
