@@ -1,28 +1,34 @@
 import network
-import uasyncio
+import uasyncio as asyncio
 
 import effects
 import webserver
 import ws2812
 
-# Настройка точки доступа
+# Wi-Fi data for connect or create  Access Point
 SSID = "WiFi_SSID"
-PASSWORD = "password"  # Выберите надежный пароль
+PASSWORD = "password"
 
-# Настройка светодиодной ленты
+# LED strip setting
 LED_COUNT = 180
 PIN = 5
-STRIP = ws2812.WS2812(PIN, LED_COUNT)
+STRIP = ws2812.WS2812(pin=PIN, pixel_count=LED_COUNT)
 
 
 async def connect_to_wifi():
+    """
+    This function is used to connect to a Wi-Fi network using the provided SSID and password.
+
+    Returns:
+    str: The IP address of the connected Wi-Fi network.
+    """
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
     wlan.connect(SSID, PASSWORD)
 
     while not wlan.isconnected():
         print("Connecting to WiFi...")
-        await uasyncio.sleep(1)
+        await asyncio.sleep(1)
 
     print(f"Connected to WiFi: {SSID}")
     print(f"IP address: {wlan.ifconfig()[0]}")
@@ -30,6 +36,15 @@ async def connect_to_wifi():
 
 
 async def create_access_point():
+    """
+    This function is used to create a Wi-Fi access point using the provided SSID and password.
+
+    Parameters:
+    None. This function uses the global SSID and PASSWORD variables.
+
+    Returns:
+    str: The IP address of the created Wi-Fi access point.
+    """
     ap = network.WLAN(network.AP_IF)
     ap.active(True)
     ap.config(essid=SSID, password=PASSWORD)
@@ -39,7 +54,12 @@ async def create_access_point():
 
 
 async def main():
-    stop_event = uasyncio.Event()  # создаем Event для остановки
+    """
+    This is the main function that orchestrates the LED strip effects and web server.
+
+    The function creates an access point, starts the web server, and manages the LED strip effects.
+    """
+    stop_event = asyncio.Event()
     effect_manager = effects.EffectManager(STRIP, stop_event)
     ip_address = await create_access_point()
 
@@ -53,4 +73,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    uasyncio.run(main())
+    asyncio.run(main())

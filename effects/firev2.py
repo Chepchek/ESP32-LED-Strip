@@ -1,52 +1,75 @@
 import random
 
-import uasyncio
+import uasyncio as asyncio
 
 
 class FireEffectV2:
     """
-    Класс, реализующий эффект "огонь" для светодиодной ленты.  Использует более сложный алгоритм,
-    чем предыдущая версия, для создания более реалистичного эффекта.
+    A class that implements a "fire" effect for an LED strip.
+
+    This class uses a more complex algorithm than the previous version
+    to create a more realistic fire effect on an LED strip.
     """
 
     def __init__(self, strip, params):
         """
-        Инициализация эффекта.
+        Initializes the fire effect for an LED strip using a more complex algorithm for a realistic effect.
 
-        Args:
-            strip: Объект светодиодной ленты.  Должен поддерживать индексацию и метод write().
-            params: Словарь параметров эффекта:
-                - r: Красный компонент цвета (0-255, по умолчанию 255).
-                - g: Зеленый компонент цвета (0-255, по умолчанию 0).
-                - b: Синий компонент цвета (0-255, по умолчанию 0).
-                - intensity: Интенсивность эффекта (0.0-1.0, по умолчанию 0.5).
-                - speed: Скорость эффекта (секунды, по умолчанию 0.1).
-                - cooling: Скорость охлаждения (0-255, по умолчанию 50).
+        Parameters:
+            strip: The LED strip object. It must support indexing and have a *write()* method.
+            params: A dictionary of effect parameters:
+                - r (int): Red color component (0-255, default is 255).
+                - g (int): Green color component (0-255, default is 0).
+                - b (int): Blue color component (0-255, default is 0).
+                - intensity (float): Effect intensity (0.0-1.0, default is 0.5).
+                - speed (float): Effect speed in seconds (default is 0.1).
+                - cooling (int): Cooling rate (0-255, default is 50).
         """
         self.strip = strip
-        self.n = len(self.strip)  # Количество светодиодов
-        self.r, self.g, self.b = self._parse_params(params)  # Разбор и проверка параметров цвета
-        self.intensity = params.get('intensity', 128) / 255.0  # Нормализация интенсивности к диапазону 0.0-1.0
-        self.speed = params.get('speed', 0.1)  # Скорость обновления эффекта
-        self.cooling = int(params.get('cooling', 40))  # Параметр охлаждения (влияет на скорость затухания)
-        self.heat = [0] * self.n  # Массив температур для каждого светодиода
-        self.palette = self._generate_palette(self.r, self.g, self.b)  # Генерация цветовой палитры
+        self.n = len(self.strip)  # Number of LEDs
+        self.r, self.g, self.b = self._parse_params(params)
+        self.intensity = params.get('intensity', 128) / 255.0  # normalized to a range 0.0 to 1.0
+        self.speed = params.get('speed', 0.1)
+        self.cooling = int(params.get('cooling', 40))  # Affects the rate of attenuation
+        self.heat = [0] * self.n  # Temperature array for each LED
+        self.palette = self._generate_palette(self.r, self.g, self.b)  # Generating a color palette
 
     @staticmethod
     def _parse_params(params):
-        """Разбирает и проверяет параметры цвета."""
-        r = int(params.get('r', 255))
-        g = int(params.get('g', 0))
-        b = int(params.get('b', 0))
-        # Проверка значений на корректность (0-255)
-        r = max(0, min(255, r))
-        g = max(0, min(255, g))
-        b = max(0, min(255, b))
+        """
+        Parses and validates the color parameters from the given dictionary.
+
+        Parameters:
+            params (dict): A dictionary containing the color parameters with keys 'r', 'g', and 'b'.
+                           Each key should map to an integer value between 0 and 255.
+
+        Returns:
+            tuple: A tuple containing the validated red, green, and blue components as integers.
+                   Each component is clamped to the range 0-255.
+        """
+        r = max(0, min(255, int(params.get('r', 60))))
+        g = max(0, min(255, int(params.get('g', 50))))
+        b = max(0, min(255, int(params.get('b', 70))))
         return r, g, b
 
     @staticmethod
     def _generate_palette(r, g, b):
-        """Генерирует цветовую палитру на основе заданных параметров RGB."""
+        """
+        Generates a color palette based on the given RGB parameters.
+
+        This method creates a list of 256 RGB color tuples, representing a gradient
+        from black to the specified color.
+
+        Parameters:
+            r (int): The red component of the target color (0-255).
+            g (int): The green component of the target color (0-255).
+            b (int): The blue component of the target color (0-255).
+
+        Returns:
+            list: A list of 256 RGB color tuples, where each tuple contains three integers
+                (r, g, b) representing the color values. The list starts with black (0, 0, 0)
+                and gradually increases to the specified target color.
+        """
         palette = []
         for i in range(256):
             r_val = int(r * (i / 255.0))
@@ -57,63 +80,74 @@ class FireEffectV2:
 
     async def run(self, stop_event):
         """
-        Запуск эффекта "огонь".  Асинхронная функция.
+        Run the "fire" effect asynchronously.
 
-        Args:
-            stop_event:  Событие, используемое для остановки эффекта (должен быть объектом, объект uasyncio.Event()).
+        This method simulates a fire effect on the LED strip by manipulating heat values
+        and translating them into colors. It runs continuously until the stop event is set.
+
+        Parameters:
+        -----------
+        stop_event : asyncio.Event
+            An event object used to stop the effect. The effect will continue running
+            until this event is set.
+
+        Notes:
+        ------
+        - The method uses the `heat` array to simulate temperature changes along the strip.
+        - It adds random heat, simulates heat propagation and cooling, and maps temperatures to colors.
+        - The effect is updated at intervals specified by `self.speed`.
+        - Any exceptions during execution are caught and printed.
+        - The method prints a message when the effect is stopped.
         """
         try:
-            while not stop_event.is_set():  # Цикл работает до тех пор, пока не установлен флаг остановки
-                # Добавление тепла в случайную позицию на ленте
+            while not stop_event.is_set():
+                # Adds heat to a random position on the LED strip.
                 self.heat[random.randint(0, self.n - 1)] = int(255 * self.intensity)
 
-                # Распространение тепла и охлаждение вдоль ленты
                 for i in range(self.n - 1, 0, -1):
-                    decay = random.randint(0, self.cooling)  # Случайное значение спада тепла
-                    wave = random.randint(-10, 10)  # Случайная волна для добавления динамики
+                    decay = random.randint(0, self.cooling)
+                    wave = random.randint(-10, 10)
                     self.heat[i] = max(0, min(255, int((self.heat[i] + self.heat[i - 1] + wave) * (1 - decay / 255.0))))
 
-                # Преобразование значений температуры в цвета из палитры
+                # Convert temperature values to colors from the palette.
                 for i in range(self.n):
-                    color_index = int(self.heat[i] / 255.0 * len(self.palette))  # Исправлено: убрали -1
-                    color_index = max(0, min(len(self.palette) - 1, color_index))  # проверка границ индекса
+                    color_index = int(self.heat[i] / 255.0 * len(self.palette))
+                    color_index = max(0, min(len(self.palette) - 1, color_index))
                     self.strip[i] = self.palette[color_index]
 
-                await self.strip.write()  # Отправка данных на светодиодную ленту
-                await uasyncio.sleep(self.speed)  # Пауза
+                await self.strip.write()
+                await asyncio.sleep(self.speed)
 
         except Exception as e:
-            print(f"Ошибка в эффекте Fire_v2: {e}")
+            print(f"Error in Fire_v2: {e}")
         finally:
-            print("Эффект Fire_v2 остановлен")
+            print("Effect Fire_v2 stopped")
 
     def stop(self):
-        """Метод остановки эффекта (пока не реализован)."""
+        """
+        Stops the "fire" effect (not implemented in this version).
+        """
         pass
 
     @staticmethod
     def get_params_info():
         """
-        Возвращает информацию о параметрах эффекта "Пламя".
-
-        Описание эффекта дополнено информацией о более сложной реализации.
+        Returns information about the parameters required for the twinkle effect.
 
         Returns:
-            tuple: Кортеж, содержащий текстовое описание эффекта и словарь параметров.
+        - tuple: A tuple containing the description of the effect and a dictionary of parameter information.
 
-            - str:  Текстовое описание эффекта, включая информацию о более сложной реализации.
-            - dict:  Словарь, ключи которого - названия параметров, а значения - словари с информацией о параметрах:
-                - "default": значение по умолчанию.
-                - "min": минимальное значение.
-                - "max": максимальное значение.
-                - "desc": текстовое описание параметра.
+        - str: The description of the effect ("FireV2").
+        - dict: A dictionary where the keys are the parameter names and the values are dictionaries containing
+                 information about each parameter.
         """
-        return "Эффект имитирует пламя\nИспользует более сложный алгоритм, \
-        чем предыдущая версия, для создания более реалистичного эффекта.", {
-            "r": {"default": 255, "min": 0, "max": 255, "desc": "Красный компонент"},
-            "g": {"default": 0, "min": 0, "max": 255, "desc": "Зеленый компонент"},
-            "b": {"default": 0, "min": 0, "max": 255, "desc": "Синий компонент"},
-            "intensity": {"default": 0.5, "min": 0.0, "max": 1.0, "desc": "Яркость"},
-            "speed": {"default": 0.1, "min": 0.01, "max": 1.0, "desc": "Скорость"},
-            "cooling": {"default": 50, "min": 0, "max": 255, "desc": "Охлаждение"},
-        },
+        return ("The FireEffectV2 class implements an advanced fire effect for LED strips. \
+        It uses a complex algorithm to create a realistic, dynamic fire simulation.",
+                {
+                    "r": {"default": 255, "min": 0, "max": 255, "desc": "Red color"},
+                    "g": {"default": 0, "min": 0, "max": 255, "desc": "Green color"},
+                    "b": {"default": 0, "min": 0, "max": 255, "desc": "Blue color"},
+                    "intensity": {"default": 0.5, "min": 0.0, "max": 1.0, "desc": "Intensity of the fire"},
+                    "speed": {"default": 0.1, "min": 0.01, "max": 1.0, "desc": "Speed of the effect"},
+                    "cooling": {"default": 50, "min": 0, "max": 255, "desc": "Cooling rate"},
+                },)
